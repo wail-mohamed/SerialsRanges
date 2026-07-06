@@ -26,17 +26,37 @@ public interface SerialRepo extends JpaRepository<Serial, String> {
             @Param("maxSerial") BigDecimal maxSerial
     );
 
+//    @Query(value = """
+//        SELECT MIN(gs.serial_num)
+//        FROM generate_series(
+//                CAST(:minSerial AS numeric),
+//                CAST(:maxSerial AS numeric),
+//                1
+//             ) AS gs(serial_num)
+//        LEFT JOIN serials s
+//            ON s.serial_num ~ '^[0-9]+$'
+//           AND s.serial_num::numeric = gs.serial_num
+//        WHERE s.serial_num IS NULL
+//        """, nativeQuery = true)
+//    BigDecimal findFirstMissingSerials(
+//            @Param("minSerial") BigDecimal minSerial,
+//            @Param("maxSerial") BigDecimal maxSerial
+//    );
+
     @Query(value = """
-        SELECT MIN(gs.serial_num)
+        SELECT gs.serial_num
         FROM generate_series(
                 CAST(:minSerial AS numeric),
                 CAST(:maxSerial AS numeric),
-                1
+                CAST(1 AS numeric)
              ) AS gs(serial_num)
-        LEFT JOIN serials s
-            ON s.serial_num ~ '^[0-9]+$'
-           AND s.serial_num::numeric = gs.serial_num
-        WHERE s.serial_num IS NULL
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM serials s
+            WHERE s.serial_num = CAST(gs.serial_num AS varchar)
+        )
+        ORDER BY gs.serial_num
+        LIMIT 1
         """, nativeQuery = true)
     BigDecimal findFirstMissingSerials(
             @Param("minSerial") BigDecimal minSerial,
